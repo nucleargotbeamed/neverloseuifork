@@ -1,4 +1,3 @@
-print("forked")
 -- init
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -404,15 +403,15 @@ do
     end
     
     function section.new(page, title)
-        -- Neverlose-style section with proper sizing
+        -- Neverlose-style section with two columns
         local container = utility:Create("Frame", {
             Name = title,
             Parent = page.sectionsContainer,
             BackgroundColor3 = themes.LightContrast,
             BorderSizePixel = 0,
-            Size = UDim2.new(0, 285, 0, 28),
+            Size = UDim2.new(0, 585, 0, 28), -- Wider for two columns
             ZIndex = 2,
-            ClipsDescendants = false  -- Changed to false to see content
+            ClipsDescendants = false
         }, {
             utility:Create("UICorner", {
                 CornerRadius = UDim.new(0, 8)
@@ -423,7 +422,7 @@ do
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 Position = UDim2.new(0, 8, 0, 30),
-                Size = UDim2.new(1, -16, 0, 0),  -- Dynamic size will be set
+                Size = UDim2.new(1, -16, 0, 0), -- Dynamic size
                 ClipsDescendants = false
             }, {
                 utility:Create("TextLabel", {
@@ -447,9 +446,37 @@ do
                     Position = UDim2.new(0.025, 0, -15, 0),
                     Size = UDim2.new(0.95, 0, 0, 1)
                 }),
-                utility:Create("UIListLayout", {
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    Padding = UDim.new(0, 8)
+                -- Two columns container
+                utility:Create("Frame", {
+                    Name = "ColumnsContainer",
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = UDim2.new(1, 0, 1, 0)
+                }, {
+                    -- Left column
+                    utility:Create("Frame", {
+                        Name = "LeftColumn",
+                        BackgroundTransparency = 1,
+                        Position = UDim2.new(0, 0, 0, 0),
+                        Size = UDim2.new(0.48, 0, 1, 0)
+                    }, {
+                        utility:Create("UIListLayout", {
+                            SortOrder = Enum.SortOrder.LayoutOrder,
+                            Padding = UDim.new(0, 8)
+                        })
+                    }),
+                    -- Right column
+                    utility:Create("Frame", {
+                        Name = "RightColumn",
+                        BackgroundTransparency = 1,
+                        Position = UDim2.new(0.52, 0, 0, 0),
+                        Size = UDim2.new(0.48, 0, 1, 0)
+                    }, {
+                        utility:Create("UIListLayout", {
+                            SortOrder = Enum.SortOrder.LayoutOrder,
+                            Padding = UDim.new(0, 8)
+                        })
+                    })
                 })
             })
         })
@@ -457,12 +484,18 @@ do
         return setmetatable({
             page = page,
             container = container.Container,
+            columnsContainer = container.Container.ColumnsContainer,
+            leftColumn = container.Container.ColumnsContainer.LeftColumn,
+            rightColumn = container.Container.ColumnsContainer.RightColumn,
             titleLabel = container.Container.Title,
             mainFrame = container,
             colorpickers = {},
             modules = {},
+            leftModules = {},
+            rightModules = {},
             binds = {},
             lists = {},
+            moduleCount = 0 -- Track total modules for alternating columns
         }, section) 
     end
     
@@ -542,109 +575,32 @@ do
         self.toggling = false
     end
     
-    -- new modules
+    -- new modules with two columns support
     
-    function library:Notify(title, text, callback)
-        -- Neverlose-style notification
-        local notification = utility:Create("Frame", {
-            Name = "Notification",
-            Parent = self.container,
-            BackgroundColor3 = Color3.fromRGB(15, 25, 39),
-            BackgroundTransparency = 0.1,
-            Size = UDim2.new(0, 200, 0, 67),
-            Position = UDim2.new(0.8, 0, 0.1, 0),
-            ZIndex = 3,
-            ClipsDescendants = true
-        }, {
-            utility:Create("UICorner", {
-                CornerRadius = UDim.new(0, 4)
-            }),
-            utility:Create("Frame", {
-                Name = "Line",
-                BackgroundColor3 = Color3.fromRGB(3, 168, 245),
-                BorderSizePixel = 0,
-                Position = UDim2.new(0, 0, 0.925, 0),
-                Size = UDim2.new(1, 0, 0, 5)
-            }, {
-                utility:Create("UICorner", {
-                    CornerRadius = UDim.new(0, 4)
-                })
-            }),
-            utility:Create("TextLabel", {
-                Name = "Title",
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0.231, 0, 0.143, 0),
-                Size = UDim2.new(0.5, 0, 0, 22),
-                ZIndex = 4,
-                Font = Enum.Font.Gotham,
-                Text = title or "Notification",
-                TextColor3 = themes.TextColor,
-                TextSize = 15,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextWrapped = true
-            }),
-            utility:Create("TextLabel", {
-                Name = "Text",
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0.231, 0, 0.6, 0),
-                Size = UDim2.new(0.6, 0, 0, 22),
-                ZIndex = 4,
-                Font = Enum.Font.Gotham,
-                Text = text or "",
-                TextColor3 = Color3.fromRGB(220, 220, 220),
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-        })
+    local function addModuleToSection(self, module, column)
+        table.insert(self.modules, module)
         
-        utility:DraggingEnabled(notification)
-        
-        local textSize = game:GetService("TextService"):GetTextSize(text, 12, Enum.Font.Gotham, Vector2.new(math.huge, 16))
-        local width = math.max(textSize.X + 70, 200)
-        
-        notification.Size = UDim2.new(0, 0, 0, 67)
-        utility:Tween(notification, {Size = UDim2.new(0, width, 0, 67)}, 0.2)
-        
-        wait(0.2)
-        
-        local active = true
-        local close = function()
-            if not active then
-                return
-            end
-            
-            active = false
-            utility:Tween(notification, {
-                Size = UDim2.new(0, 0, 0, 67),
-                Position = notification.Position + UDim2.new(0, width, 0, 0)
-            }, 0.2)
-            
-            wait(0.2)
-            notification:Destroy()
+        if column == "left" then
+            table.insert(self.leftModules, module)
+            module.Parent = self.leftColumn
+        else
+            table.insert(self.rightModules, module)
+            module.Parent = self.rightColumn
         end
         
-        if callback then
-            notification.MouseButton1Click:Connect(function()
-                if active then
-                    callback(true)
-                    close()
-                end
-            end)
-        end
-        
-        spawn(function()
-            wait(3)
-            close()
-        end)
-        
-        return notification
+        self.moduleCount = self.moduleCount + 1
+        self:Resize()
     end
     
-    function section:addButton(title, callback)
+    function section:addButton(title, callback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Neverlose-style button
         local button = utility:Create("TextButton", {
             Name = "Button",
-            Parent = self.container,
             BackgroundColor3 = themes.DarkContrast,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -676,8 +632,6 @@ do
                 TextXAlignment = Enum.TextXAlignment.Left
             })
         })
-        
-        table.insert(self.modules, button)
         
         local text = button.Title
         local debounce
@@ -717,15 +671,19 @@ do
             debounce = false
         end)
         
-        self:Resize()
+        addModuleToSection(self, button, column)
         return button
     end
     
-    function section:addToggle(title, default, callback)
+    function section:addToggle(title, default, callback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Neverlose-style toggle
         local toggle = utility:Create("TextButton", {
             Name = "Toggle",
-            Parent = self.container,
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -739,7 +697,7 @@ do
                 AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundTransparency = 1,
                 Position = UDim2.new(0.036, 0, 0.5, 0),
-                Size = UDim2.new(0.5, 0, 1, 0),
+                Size = UDim2.new(0.7, 0, 1, 0),
                 ZIndex = 3,
                 Font = Enum.Font.Gotham,
                 Text = title,
@@ -751,7 +709,7 @@ do
                 Name = "ToggleFrame",
                 BackgroundColor3 = themes.DarkContrast,
                 BorderSizePixel = 0,
-                Position = UDim2.new(0.87, 0, 0.233, 0),
+                Position = UDim2.new(0.85, 0, 0.233, 0),
                 Size = UDim2.new(0, 38, 0, 15)
             }, {
                 utility:Create("Frame", {
@@ -768,7 +726,7 @@ do
             })
         })
         
-        table.insert(self.modules, toggle)
+        addModuleToSection(self, toggle, column)
         
         local active = default
         self:updateToggle(toggle, nil, active)
@@ -784,15 +742,18 @@ do
             end
         end)
         
-        self:Resize()
         return toggle
     end
     
-    function section:addTextbox(title, default, callback)
+    function section:addTextbox(title, default, callback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Neverlose-style textbox
         local textbox = utility:Create("TextButton", {
             Name = "Textbox",
-            Parent = self.container,
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -848,7 +809,7 @@ do
             })
         })
         
-        table.insert(self.modules, textbox)
+        addModuleToSection(self, textbox, column)
         
         local frame = textbox.TextBoxFrame
         local input = frame.Textbox
@@ -897,15 +858,18 @@ do
             end
         end)
         
-        self:Resize()
         return textbox
     end
     
-    function section:addKeybind(title, default, callback, changedCallback)
+    function section:addKeybind(title, default, callback, changedCallback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Neverlose-style keybind
         local keybind = utility:Create("TextButton", {
             Name = "Keybind",
-            Parent = self.container,
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -951,7 +915,7 @@ do
             })
         })
         
-        table.insert(self.modules, keybind)
+        addModuleToSection(self, keybind, column)
         
         local text = keybind.KeybindFrame.Text
         local frame = keybind.KeybindFrame
@@ -999,15 +963,18 @@ do
             end
         end)
         
-        self:Resize()
         return keybind
     end
     
-    function section:addColorPicker(title, default, callback)
+    function section:addColorPicker(title, default, callback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Simplified Neverlose-style color picker
         local colorpicker = utility:Create("TextButton", {
             Name = "ColorPicker",
-            Parent = self.container,
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -1021,7 +988,7 @@ do
                 AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundTransparency = 1,
                 Position = UDim2.new(0.036, 0, 0.5, 0),
-                Size = UDim2.new(0.5, 0, 1, 0),
+                Size = UDim2.new(0.7, 0, 1, 0),
                 ZIndex = 3,
                 Font = Enum.Font.Gotham,
                 Text = title,
@@ -1034,7 +1001,7 @@ do
                 BackgroundColor3 = default or Color3.fromRGB(255, 255, 255),
                 BorderColor3 = Color3.fromRGB(0, 0, 0),
                 BorderSizePixel = 0,
-                Position = UDim2.new(0.925, 0, 0.231, 0),
+                Position = UDim2.new(0.9, 0, 0.231, 0),
                 Size = UDim2.new(0, 15, 0, 15),
                 ZIndex = 2,
                 AutoButtonColor = false,
@@ -1053,8 +1020,7 @@ do
             })
         })
         
-        table.insert(self.modules, colorpicker)
-        self:Resize()
+        addModuleToSection(self, colorpicker, column)
         
         local preview = colorpicker.ColorPreview
         
@@ -1283,11 +1249,15 @@ do
         return colorpicker
     end
     
-    function section:addSlider(title, default, min, max, callback)
+    function section:addSlider(title, default, min, max, callback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Neverlose-style slider
         local slider = utility:Create("TextButton", {
             Name = "Slider",
-            Parent = self.container,
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -1300,7 +1270,7 @@ do
                 Name = "Title",
                 BackgroundTransparency = 1,
                 Position = UDim2.new(0.036, 0, 0.233, 0),
-                Size = UDim2.new(0.5, 0, 0, 15),
+                Size = UDim2.new(0.6, 0, 0, 15),
                 ZIndex = 3,
                 Font = Enum.Font.Gotham,
                 Text = title,
@@ -1314,7 +1284,7 @@ do
                 BorderColor3 = Color3.fromRGB(0, 0, 0),
                 BorderSizePixel = 0,
                 Position = UDim2.new(0.503, 0, 0.467, 0),
-                Size = UDim2.new(0, 100, 0, 1)
+                Size = UDim2.new(0, 80, 0, 1)
             }, {
                 utility:Create("Frame", {
                     Name = "SliderDot",
@@ -1334,8 +1304,8 @@ do
                 BackgroundColor3 = themes.DarkContrast,
                 BorderColor3 = Color3.fromRGB(0, 0, 0),
                 BorderSizePixel = 0,
-                Position = UDim2.new(0.909, 0, 0.267, 0),
-                Size = UDim2.new(0, 23, 0, 13),
+                Position = UDim2.new(0.9, 0, 0.267, 0),
+                Size = UDim2.new(0, 30, 0, 13),
                 Font = Enum.Font.SourceSans,
                 Text = tostring(default and math.floor((default / max) * (max - min) + min) or min),
                 TextColor3 = themes.TextColor,
@@ -1349,8 +1319,7 @@ do
             })
         })
         
-        table.insert(self.modules, slider)
-        self:Resize()
+        addModuleToSection(self, slider, column)
         
         local valueBox = slider.Value
         local sliderFrame = slider.SliderFrame
@@ -1422,11 +1391,15 @@ do
         return slider
     end
     
-    function section:addDropdown(title, list, callback)
+    function section:addDropdown(title, list, callback, column)
+        -- Automatically alternate columns if not specified
+        if not column then
+            column = (self.moduleCount % 2 == 0) and "left" or "right"
+        end
+        
         -- Neverlose-style dropdown
         local dropdown = utility:Create("TextButton", {
             Name = "Dropdown",
-            Parent = self.container,
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
@@ -1453,7 +1426,7 @@ do
                 BorderColor3 = Color3.fromRGB(0, 0, 0),
                 BorderSizePixel = 0,
                 Position = UDim2.new(0.641, 0, 0.233, 0),
-                Size = UDim2.new(0, 100, 0, 15)
+                Size = UDim2.new(0, 80, 0, 15)
             }, {
                 utility:Create("UICorner", {
                     CornerRadius = UDim.new(0, 3)
@@ -1484,8 +1457,7 @@ do
             })
         })
         
-        table.insert(self.modules, dropdown)
-        self:Resize()
+        addModuleToSection(self, dropdown, column)
         
         local frame = dropdown.DropdownFrame
         local arrow = frame.Arrow
@@ -1587,6 +1559,15 @@ do
         return dropdown
     end
     
+    -- Optional: Manual column placement
+    function section:addToLeft(moduleFunction, ...)
+        return moduleFunction(self, ..., "left")
+    end
+    
+    function section:addToRight(moduleFunction, ...)
+        return moduleFunction(self, ..., "right")
+    end
+    
     -- class functions
     
     function library:SelectPage(page, toggle)
@@ -1661,12 +1642,21 @@ do
         end
         
         local padding = 8
-        local contentHeight = 0
+        local leftHeight = 0
+        local rightHeight = 0
         
-        -- Calculate the total height of all modules
-        for i, module in pairs(self.modules) do
-            contentHeight = contentHeight + module.AbsoluteSize.Y + padding
+        -- Calculate height for left column
+        for i, module in pairs(self.leftModules) do
+            leftHeight = leftHeight + module.AbsoluteSize.Y + padding
         end
+        
+        -- Calculate height for right column
+        for i, module in pairs(self.rightModules) do
+            rightHeight = rightHeight + module.AbsoluteSize.Y + padding
+        end
+        
+        -- Use the taller column
+        local contentHeight = math.max(leftHeight, rightHeight)
         
         -- Add space for the title (which is at position -30)
         local totalHeight = math.max(30 + contentHeight, 60) -- Minimum height
@@ -1674,13 +1664,16 @@ do
         -- Set the container size
         self.container.Size = UDim2.new(1, -16, 0, contentHeight)
         
+        -- Set the columns container size
+        self.columnsContainer.Size = UDim2.new(1, 0, 0, contentHeight)
+        
         -- Set the main frame size
         local mainFrameHeight = totalHeight + 8 -- Add some bottom padding
         
         if smooth then
-            utility:Tween(self.mainFrame, {Size = UDim2.new(0, 285, 0, mainFrameHeight)}, 0.05)
+            utility:Tween(self.mainFrame, {Size = UDim2.new(0, 585, 0, mainFrameHeight)}, 0.05)
         else
-            self.mainFrame.Size = UDim2.new(0, 285, 0, mainFrameHeight)
+            self.mainFrame.Size = UDim2.new(0, 585, 0, mainFrameHeight)
             self.page:Resize()
         end
     end
