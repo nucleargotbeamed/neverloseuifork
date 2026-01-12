@@ -1,4 +1,4 @@
-                -- init
+-- init
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
 
@@ -35,7 +35,7 @@ do
                 
                 if theme then
                     objects[theme] = objects[theme] or {}
-                    objects[theme][i] = objects[theme][i] or setmetatable({}, {_mode = "k"})
+                    objects[theme][i] = objects[theme][i] or setmetatable({}, {__mode = "k"}) -- Fixed: changed _mode to __mode
                     
                     table.insert(objects[theme][i], object)
                 end
@@ -147,7 +147,7 @@ do
     function utility:KeyPressed() -- yield until next key is pressed
         local key = input.InputBegan:Wait()
         
-        while key.UserInputType ~= Enum.UserInputType.Keyboard     do
+        while key.UserInputType ~= Enum.UserInputType.Keyboard do
             key = input.InputBegan:Wait()
         end
         
@@ -174,8 +174,7 @@ do
                     if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
                     end
-                end
-                )
+                end)
             end
         end)
 
@@ -191,7 +190,6 @@ do
                 parent.Position  = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
             end
         end)
-
     end
     
     function utility:DraggingEnded(callback)
@@ -368,7 +366,7 @@ do
                 ImageColor3 = themes.TextColor,
                 ImageTransparency = 0.64,
                 ScaleType = Enum.ScaleType.Fit
-            }) or {}
+            }) or utility:Create("Frame") -- Fixed: added empty frame when no icon
         })
         
         -- Content container (Neverlose style scrolling frame)
@@ -1035,8 +1033,7 @@ do
                 ZIndex = 2,
                 AutoButtonColor = false,
                 Font = Enum.Font.SourceSans,
-               
-		Text = ""
+                Text = ""
             }, {
                 utility:Create("UICorner", {
                     CornerRadius = UDim.new(1, 0)
@@ -1051,7 +1048,7 @@ do
         })
         
         table.insert(self.modules, colorpicker)
-        --self:Resize()
+        self:Resize()
         
         local preview = colorpicker.ColorPreview
         
@@ -1227,7 +1224,9 @@ do
                 end)
                 
                 utility:DraggingEnded(function()
-                    connection:Disconnect()
+                    if connection then
+                        connection:Disconnect()
+                    end
                 end)
             end)
             
@@ -1247,7 +1246,9 @@ do
                 end)
                 
                 utility:DraggingEnded(function()
-                    connection:Disconnect()
+                    if connection then
+                        connection:Disconnect()
+                    end
                 end)
             end)
             
@@ -1343,7 +1344,7 @@ do
         })
         
         table.insert(self.modules, slider)
-        --self:Resize()
+        self:Resize()
         
         local valueBox = slider.Value
         local sliderFrame = slider.SliderFrame
@@ -1378,7 +1379,9 @@ do
                 local connection
                 connection = run.RenderStepped:Connect(function()
                     if not dragging then
-                        connection:Disconnect()
+                        if connection then
+                            connection:Disconnect()
+                        end
                         return
                     end
                     
@@ -1394,6 +1397,9 @@ do
                 
                 utility:DraggingEnded(function()
                     dragging = false
+                    if connection then
+                        connection:Disconnect()
+                    end
                 end)
             end
         end)
@@ -1473,7 +1479,7 @@ do
         })
         
         table.insert(self.modules, dropdown)
-        --self:Resize()
+        self:Resize()
         
         local frame = dropdown.DropdownFrame
         local arrow = frame.Arrow
@@ -1489,10 +1495,10 @@ do
             
             dropdownFrame = utility:Create("Frame", {
                 Name = "DropdownList",
-                Parent = self.container,
+                Parent = self.page.library.container,
                 BackgroundColor3 = Color3.fromRGB(0, 18, 35),
                 BorderSizePixel = 0,
-                Position = UDim2.new(0, 0, 1, 0),
+                Position = UDim2.new(0.5, -128, 0.5, 0),
                 Size = UDim2.new(0, 257, 0, 130),
                 ZIndex = 7,
                 Visible = false
