@@ -1,3 +1,4 @@
+print("forked")
 -- init
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -35,7 +36,7 @@ do
                 
                 if theme then
                     objects[theme] = objects[theme] or {}
-                    objects[theme][i] = objects[theme][i] or setmetatable({}, {__mode = "k"}) -- Fixed: changed _mode to __mode
+                    objects[theme][i] = objects[theme][i] or setmetatable({}, {__mode = "k"})
                     
                     table.insert(objects[theme][i], object)
                 end
@@ -366,7 +367,7 @@ do
                 ImageColor3 = themes.TextColor,
                 ImageTransparency = 0.64,
                 ScaleType = Enum.ScaleType.Fit
-            }) or utility:Create("Frame") -- Fixed: added empty frame when no icon
+            }) or utility:Create("Frame")
         })
         
         -- Content container (Neverlose style scrolling frame)
@@ -403,7 +404,7 @@ do
     end
     
     function section.new(page, title)
-        -- Neverlose-style section
+        -- Neverlose-style section with proper sizing
         local container = utility:Create("Frame", {
             Name = title,
             Parent = page.sectionsContainer,
@@ -411,7 +412,7 @@ do
             BorderSizePixel = 0,
             Size = UDim2.new(0, 285, 0, 28),
             ZIndex = 2,
-            ClipsDescendants = true
+            ClipsDescendants = false  -- Changed to false to see content
         }, {
             utility:Create("UICorner", {
                 CornerRadius = UDim.new(0, 8)
@@ -422,7 +423,8 @@ do
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 Position = UDim2.new(0, 8, 0, 30),
-                Size = UDim2.new(1, -16, 1, -38)
+                Size = UDim2.new(1, -16, 0, 0),  -- Dynamic size will be set
+                ClipsDescendants = false
             }, {
                 utility:Create("TextLabel", {
                     Name = "Title",
@@ -456,6 +458,7 @@ do
             page = page,
             container = container.Container,
             titleLabel = container.Container.Title,
+            mainFrame = container,
             colorpickers = {},
             modules = {},
             binds = {},
@@ -643,7 +646,6 @@ do
             Name = "Button",
             Parent = self.container,
             BackgroundColor3 = themes.DarkContrast,
-            BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Size = UDim2.new(1, 0, 0, 26),
             ZIndex = 2,
@@ -715,6 +717,7 @@ do
             debounce = false
         end)
         
+        self:Resize()
         return button
     end
     
@@ -781,6 +784,7 @@ do
             end
         end)
         
+        self:Resize()
         return toggle
     end
     
@@ -893,6 +897,7 @@ do
             end
         end)
         
+        self:Resize()
         return textbox
     end
     
@@ -994,6 +999,7 @@ do
             end
         end)
         
+        self:Resize()
         return keybind
     end
     
@@ -1638,7 +1644,7 @@ do
         local size = 0
         
         for i, section in pairs(self.sections) do
-            size = size + section.container.Parent.AbsoluteSize.Y + padding
+            size = size + section.mainFrame.AbsoluteSize.Y + padding
         end
         
         self.sectionsContainer.Size = UDim2.new(1, 0, 0, size)
@@ -1655,16 +1661,26 @@ do
         end
         
         local padding = 8
-        local size = 60 -- Title + line height
+        local contentHeight = 0
         
+        -- Calculate the total height of all modules
         for i, module in pairs(self.modules) do
-            size = size + module.AbsoluteSize.Y + padding
+            contentHeight = contentHeight + module.AbsoluteSize.Y + padding
         end
         
+        -- Add space for the title (which is at position -30)
+        local totalHeight = math.max(30 + contentHeight, 60) -- Minimum height
+        
+        -- Set the container size
+        self.container.Size = UDim2.new(1, -16, 0, contentHeight)
+        
+        -- Set the main frame size
+        local mainFrameHeight = totalHeight + 8 -- Add some bottom padding
+        
         if smooth then
-            utility:Tween(self.container.Parent, {Size = UDim2.new(0, 285, 0, size)}, 0.05)
+            utility:Tween(self.mainFrame, {Size = UDim2.new(0, 285, 0, mainFrameHeight)}, 0.05)
         else
-            self.container.Parent.Size = UDim2.new(0, 285, 0, size)
+            self.mainFrame.Size = UDim2.new(0, 285, 0, mainFrameHeight)
             self.page:Resize()
         end
     end
